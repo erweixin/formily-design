@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Wand2, AlertCircle, Sparkles, Zap, History } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Wand2, AlertCircle, Sparkles, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageUploader } from '@/components/ImageUploader';
 import { PromptInput } from '@/components/PromptInput';
@@ -14,7 +13,6 @@ import type { UploadedImage, FormilySchema, LocalHistoryItem } from '@/types';
 
 
 export default function Home() {
-  const router = useRouter();
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
