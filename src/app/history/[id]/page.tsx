@@ -7,7 +7,6 @@ import { HistoryItem } from '@/types';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SchemaCodeTab } from '@/components/SchemaCodeTab';
 import { FormRenderer } from '@/components/FormRenderer';
-import Image from 'next/image';
 
 export default function HistoryDetailPage() {
   const router = useRouter();
@@ -159,11 +158,11 @@ export default function HistoryDetailPage() {
             {/* 原始图片 */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">原始图片</h3>
-              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                <Image
+              <div className="aspect-video bg-gray-100 rounded-lg">
+                <img
                   src={historyItem.inputImageUrl}
                   alt="原始表单设计"
-                  className="w-full h-full object-cover"
+                  className="w-full "
                 />
               </div>
               {historyItem.metadata?.originalFileName && (

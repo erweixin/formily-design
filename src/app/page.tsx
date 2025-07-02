@@ -132,7 +132,7 @@ export default function Home() {
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
             上传图片并描述你的需求，AI 将为你生成 Formily 2.x 的 schema
           </p>
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <button
               onClick={() => router.push('/history')}
               className="flex items-center gap-2 mx-auto px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-slate-200 hover:bg-white/20 transition-all duration-300"
@@ -140,7 +140,7 @@ export default function Home() {
               <History className="h-5 w-5" />
               查看完整历史记录
             </button>
-          </div>
+          </div> */}
         </motion.div>
 
         {/* 特性介绍 */}

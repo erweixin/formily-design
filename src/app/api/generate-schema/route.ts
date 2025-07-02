@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       imageFile = formData.get('image') as File;
       prompt = formData.get('prompt') as string;
       
-      if (!imageFile || !prompt) {
+      if (!imageFile) {
         return NextResponse.json(
           { success: false, error: '图片和提示词都是必需的' },
           { status: 400 }
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       imageBase64 = body.image;
       prompt = body.prompt;
 
-      if (!imageBase64 || !prompt) {
+      if (!imageBase64) {
         return NextResponse.json(
           { success: false, error: '图片和提示词都是必需的' },
           { status: 400 }
