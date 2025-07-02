@@ -1,17 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { GenerateSchemaRequest, GenerateSchemaResponse } from '@/types';
+import { saveHistoryItem } from '@/lib/history';
 
 export async function POST(request: NextRequest) {
-  try {
-    const body: GenerateSchemaRequest = await request.json();
-    const { image, prompt } = body;
+  const startTime = Date.now();
+  let imageFile: File | null = null;
+  let imageBase64: string | null = null;
+  let prompt: string | null = null;
 
-    // 验证输入
-    if (!image || !prompt) {
-      return NextResponse.json(
-        { success: false, error: '图片和提示词都是必需的' },
-        { status: 400 }
-      );
+  try {
+    // 检查Content-Type来决定如何处理请求
+    const contentType = request.headers.get('content-type') || '';
+    
+    if (contentType.includes('multipart/form-data')) {
+      // 处理FormData（包含文件）
+      const formData = await request.formData();
+      imageFile = formData.get('image') as File;
+      prompt = formData.get('prompt') as string;
+      
+      if (!imageFile || !prompt) {
+        return NextResponse.json(
+          { success: false, error: '图片和提示词都是必需的' },
+          { status: 400 }
+        );
+      }
+
+      // 将File转换为base64
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      imageBase64 = buffer.toString('base64');
+    } else {
+      // 处理JSON（兼容原有格式）
+      const body: GenerateSchemaRequest = await request.json();
+      imageBase64 = body.image;
+      prompt = body.prompt;
+
+      if (!imageBase64 || !prompt) {
+        return NextResponse.json(
+          { success: false, error: '图片和提示词都是必需的' },
+          { status: 400 }
+        );
+      }
     }
 
     // 这里需要配置你的 OpenRouter API 密钥
@@ -24,17 +53,22 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建发送给 OpenRouter 的提示词
-    const systemPrompt = `你是一个专业的表单设计专家。请根据用户上传的图片和描述，生成一个符合 Formily 2.x 规范的 JSON Schema。
+    const systemPrompt = `你是一个专业的 formily 表单设计专家。请根据用户上传的图片和描述，生成一个符合 Formily 2.x 规范的 JSON Schema。
 
 要求：
 1. 生成的 schema 必须是有效的 JSON 格式
 2. 使用 Formily 2.x 的 schema 规范
 3. 根据图片内容推断表单字段类型和布局
-4. 字段名称使用中文
 5. 添加适当的验证规则
 6. 返回的 JSON 不要包含任何解释文字，只返回 schema 对象
 7. 组件是使用的 @formily/antd-v5
-8. 使用 FormGrid 和 FormLayout 来完成布局，特别注意 FormLayout 的  layout 属性来控制 layout mode。
+8. 使用 FormGrid 和 FormLayout 来完成布局，特别注意 FormLayout 的 layout 属性来控制 layout mode, 请保证布局的 100% 正确。
+9. 如果某个 select 字段选择项来源于服务端，且声明 dictKey，则为该字段增加 'x-reactions': [
+          '{{useFieldUnitDictSource({「dictKey」)}}',
+        ],
+10. properties 使用英文替换
+11. 要保证必填项的展示正确
+12. 详细区分 RadioGroup 的 optionType
 
 使用的组件如下：
   components: {
@@ -80,7 +114,7 @@ export async function POST(request: NextRequest) {
       {
         type: 'image_url',
         image_url: {
-          url: `data:image/png;base64,${image}`
+          url: `data:image/png;base64,${imageBase64}`
         }
       },
       {
@@ -139,6 +173,18 @@ export async function POST(request: NextRequest) {
     } catch (parseError) {
       console.error('JSON 解析失败:', parseError);
       throw new Error('生成的 schema 格式无效');
+    }
+
+    const processingTime = Date.now() - startTime;
+
+    // 保存到历史记录（如果有文件的话）
+    if (imageFile) {
+      try {
+        await saveHistoryItem(prompt, imageFile, schema, processingTime);
+      } catch (historyError) {
+        console.error('保存历史记录失败:', historyError);
+        // 不阻止主要流程，只记录错误
+      }
     }
 
     const result: GenerateSchemaResponse = {

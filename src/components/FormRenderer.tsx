@@ -63,8 +63,12 @@ export function FormRenderer({ schema }: FormRendererProps) {
   return (
     <FormProvider form={form}>
       <div className="p-4">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <SchemaField schema={schema as any} />
+        { }
+        <SchemaField scope={{
+          useFieldUnitDictSource: () => {
+            return '';
+          }
+        }} schema={schema as Record<string, unknown>} />
       </div>
     </FormProvider>
   );

@@ -119,7 +119,7 @@ export function HistoryItem({ record, onRetry, onDelete, onView }: HistoryItemPr
           </p>
 
           {/* 操作按钮 */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 gap-2">
             <motion.button
               onClick={() => onRetry(record)}
               className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg transition-colors"

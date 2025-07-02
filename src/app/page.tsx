@@ -1,77 +1,73 @@
 'use client';
 
-import { useState } from 'react';
-import { Wand2, AlertCircle, Sparkles, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Wand2, AlertCircle, Sparkles, Zap, History } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImageUploader } from '@/components/ImageUploader';
 import { PromptInput } from '@/components/PromptInput';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SchemaDrawer } from '@/components/SchemaDrawer';
 import { HistoryPanel } from '@/components/HistoryPanel';
-import { HistoryManager } from '@/lib/history';
-import type { UploadedImage, FormilySchema, HistoryRecord } from '@/types';
+import { saveLocalHistoryItem, getLocalHistory, deleteLocalHistoryItem, searchLocalHistory } from '@/lib/history';
+import type { UploadedImage, FormilySchema, LocalHistoryItem } from '@/types';
+
 
 export default function Home() {
+  const router = useRouter();
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedSchema, setGeneratedSchema] = useState<FormilySchema | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [localHistory, setLocalHistory] = useState<LocalHistoryItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // 处理历史记录重试
-  const handleRetry = (record: HistoryRecord) => {
-    // 将历史记录的数据填充到当前表单
-    setUploadedImage({
-      file: new File([], 'history-image.png'),
-      preview: `data:image/png;base64,${record.image}`
-    });
-    setPrompt(record.prompt);
-    // 自动触发生成
-    handleGenerateSchemaFromHistory(record);
+  // 加载本地历史记录
+  useEffect(() => {
+    loadLocalHistory();
+  }, []);
+
+  const loadLocalHistory = () => {
+    const history = getLocalHistory();
+    setLocalHistory(history);
   };
 
-  // 处理历史记录查看
-  const handleViewHistory = (record: HistoryRecord) => {
-    setGeneratedSchema(record.schema);
-    setIsDrawerOpen(true);
+  // 处理本地历史记录重试
+  const handleRetry = (item: LocalHistoryItem) => {
+    setPrompt(item.prompt);
+    // 注意：本地历史记录没有图片，需要用户重新上传
   };
 
-  // 从历史记录生成
-  const handleGenerateSchemaFromHistory = async (record: HistoryRecord) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/generate-schema', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: record.image,
-          prompt: record.prompt,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || '生成失败');
-      }
-
-      setGeneratedSchema(data.schema);
+  // 处理本地历史记录查看
+  const handleViewHistory = (item: LocalHistoryItem) => {
+    if (item.schema) {
+      setGeneratedSchema(item.schema);
       setIsDrawerOpen(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '生成失败，请重试');
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  // 处理本地历史记录删除
+  const handleDeleteLocalHistory = (id: string) => {
+    deleteLocalHistoryItem(id);
+    loadLocalHistory();
+  };
+
+  // 处理本地历史记录搜索
+  const handleSearchLocalHistory = (term: string) => {
+    setSearchTerm(term);
+    if (term) {
+      const filtered = searchLocalHistory(term);
+      setLocalHistory(filtered);
+    } else {
+      loadLocalHistory();
     }
   };
 
   const handleGenerateSchema = async () => {
-    if (!uploadedImage || !prompt.trim()) {
-      setError('请上传图片并输入描述');
+    if (!uploadedImage) {
+      setError('请上传图片');
       return;
     }
 
@@ -79,18 +75,16 @@ export default function Home() {
     setError(null);
 
     try {
-      // 将图片转换为 base64
+      // base64 图片
       const base64Image = uploadedImage.preview.split(',')[1];
+      // 使用FormData发送请求，这样会自动保存历史记录到远程
+      const formData = new FormData();
+      formData.append('image', uploadedImage.file);
+      formData.append('prompt', prompt.trim());
 
       const response = await fetch('/api/generate-schema', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: base64Image,
-          prompt: prompt.trim(),
-        }),
+        body: formData,
       });
 
       const data = await response.json();
@@ -99,24 +93,24 @@ export default function Home() {
         throw new Error(data.error || '生成失败');
       }
 
-      // 保存到历史记录
-      HistoryManager.addHistory({
-        image: base64Image,
-        prompt: prompt.trim(),
-        schema: data.schema,
-        success: true,
-      });
+      // 保存到本地历史记录（成功）
+      saveLocalHistoryItem(prompt.trim(), base64Image, data.schema, true);
+      loadLocalHistory();
 
       setGeneratedSchema(data.schema);
       setIsDrawerOpen(true);
     } catch (err) {
+      // 保存到本地历史记录（失败）
+      const base64Image = uploadedImage?.preview.split(',')[1] || '';
+      saveLocalHistoryItem(prompt.trim(), base64Image, null, false);
+      loadLocalHistory();
       setError(err instanceof Error ? err.message : '生成失败，请重试');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const canSubmit = uploadedImage && prompt.trim() && !isLoading;
+  const canSubmit = uploadedImage && !isLoading;
 
   return (
     <div className="min-h-screen gradient-bg">
@@ -138,6 +132,15 @@ export default function Home() {
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
             上传图片并描述你的需求，AI 将为你生成 Formily 2.x 的 schema
           </p>
+          <div className="mt-6">
+            <button
+              onClick={() => router.push('/history')}
+              className="flex items-center gap-2 mx-auto px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-slate-200 hover:bg-white/20 transition-all duration-300"
+            >
+              <History className="h-5 w-5" />
+              查看完整历史记录
+            </button>
+          </div>
         </motion.div>
 
         {/* 特性介绍 */}
@@ -159,8 +162,8 @@ export default function Home() {
           </div>
           <div className="glass rounded-xl p-6 text-center">
             <Sparkles className="h-8 w-8 text-green-400 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-slate-200 mb-2">历史记录</h3>
-            <p className="text-slate-400">保存生成历史，支持快速重试和查看</p>
+            <h3 className="text-lg font-semibold text-slate-200 mb-2">本地记录</h3>
+            <p className="text-slate-400">本地保存生成历史，快速访问和重试</p>
           </div>
         </motion.div>
 
@@ -242,7 +245,7 @@ export default function Home() {
             </motion.div>
           </motion.div>
 
-          {/* 右侧：历史记录 */}
+          {/* 右侧：本地历史记录 */}
           <motion.div 
             className="h-[600px]"
             initial={{ opacity: 0, x: 20 }}
@@ -250,8 +253,12 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <HistoryPanel 
+              localHistory={localHistory}
               onRetry={handleRetry}
               onView={handleViewHistory}
+              onDelete={handleDeleteLocalHistory}
+              onSearch={handleSearchLocalHistory}
+              searchTerm={searchTerm}
             />
           </motion.div>
         </div>

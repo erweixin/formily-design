@@ -50,10 +50,10 @@ export function SchemaCodeTab({ schema }: SchemaCodeTabProps) {
           <div className="w-2 h-2 bg-green-400 rounded-full"></div>
           <h3 className="text-lg font-medium text-slate-200">Schema 代码</h3>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 gap-2">
           <motion.button
             onClick={handleDownload}
-            className="flex items-center space-x-2 px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+            className="flex items-center mr-2 space-x-2 px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -94,7 +94,7 @@ export function SchemaCodeTab({ schema }: SchemaCodeTabProps) {
             <span className="text-xs text-slate-400 ml-2">formily-schema.json</span>
           </div>
         </div>
-        <div className="p-4 overflow-auto max-h-96">
+        <div className="p-4 overflow-auto max-h-196">
           <pre
             ref={setCodeRef}
             className="text-sm font-mono text-slate-200 leading-relaxed"

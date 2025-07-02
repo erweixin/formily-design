@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageSquare, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface PromptInputProps {
@@ -27,12 +27,12 @@ export function PromptInput({ onPromptChange, disabled = false }: PromptInputPro
 
   return (
     <div className="w-full space-y-3">
-      <div className="flex items-center space-x-2">
+      {/* <div className="flex items-center space-x-2">
         <MessageSquare className="h-5 w-5 text-slate-400" />
         <label htmlFor="prompt" className="text-sm font-medium text-slate-200">
           描述你的需求
         </label>
-      </div>
+      </div> */}
       
       <motion.div
         className={`relative rounded-xl border-2 transition-all duration-300 ${
@@ -51,7 +51,7 @@ export function PromptInput({ onPromptChange, disabled = false }: PromptInputPro
           onFocus={handleFocus}
           onBlur={handleBlur}
           disabled={disabled}
-          placeholder="请详细描述你想要生成的表单类型、字段、布局等信息..."
+          placeholder="请详细描述额外需求..."
           className="w-full px-4 py-3 bg-transparent border-none outline-none resize-none text-slate-200 placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
           rows={4}
           maxLength={maxCharacters}
@@ -76,7 +76,7 @@ export function PromptInput({ onPromptChange, disabled = false }: PromptInputPro
       </motion.div>
       
       <div className="flex items-center justify-between text-xs text-slate-500">
-        <span>例如：用户注册表单，包含用户名、邮箱、密码、确认密码等字段</span>
+        <span>例如：所属组织字段选择项来自服务端，dictKey 为 org_id</span>
         <span>{characterCount}/{maxCharacters}</span>
       </div>
     </div>
