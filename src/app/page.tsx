@@ -1,103 +1,268 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { Wand2, AlertCircle, Sparkles, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ImageUploader } from '@/components/ImageUploader';
+import { PromptInput } from '@/components/PromptInput';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { SchemaDrawer } from '@/components/SchemaDrawer';
+import { HistoryPanel } from '@/components/HistoryPanel';
+import { HistoryManager } from '@/lib/history';
+import type { UploadedImage, FormilySchema, HistoryRecord } from '@/types';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
+  const [prompt, setPrompt] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [generatedSchema, setGeneratedSchema] = useState<FormilySchema | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // 处理历史记录重试
+  const handleRetry = (record: HistoryRecord) => {
+    // 将历史记录的数据填充到当前表单
+    setUploadedImage({
+      file: new File([], 'history-image.png'),
+      preview: `data:image/png;base64,${record.image}`
+    });
+    setPrompt(record.prompt);
+    // 自动触发生成
+    handleGenerateSchemaFromHistory(record);
+  };
+
+  // 处理历史记录查看
+  const handleViewHistory = (record: HistoryRecord) => {
+    setGeneratedSchema(record.schema);
+    setIsDrawerOpen(true);
+  };
+
+  // 从历史记录生成
+  const handleGenerateSchemaFromHistory = async (record: HistoryRecord) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/generate-schema', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: record.image,
+          prompt: record.prompt,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || '生成失败');
+      }
+
+      setGeneratedSchema(data.schema);
+      setIsDrawerOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '生成失败，请重试');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateSchema = async () => {
+    if (!uploadedImage || !prompt.trim()) {
+      setError('请上传图片并输入描述');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // 将图片转换为 base64
+      const base64Image = uploadedImage.preview.split(',')[1];
+
+      const response = await fetch('/api/generate-schema', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: base64Image,
+          prompt: prompt.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || '生成失败');
+      }
+
+      // 保存到历史记录
+      HistoryManager.addHistory({
+        image: base64Image,
+        prompt: prompt.trim(),
+        schema: data.schema,
+        success: true,
+      });
+
+      setGeneratedSchema(data.schema);
+      setIsDrawerOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '生成失败，请重试');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const canSubmit = uploadedImage && prompt.trim() && !isLoading;
+
+  return (
+    <div className="min-h-screen gradient-bg">
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* Hero Section */}
+        <motion.div 
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <Sparkles className="h-8 w-8 text-blue-400" />
+            <h1 className="text-4xl font-bold text-slate-100">
+              Formily 表单生成器
+            </h1>
+            <Sparkles className="h-8 w-8 text-blue-400" />
+          </div>
+          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+            上传图片并描述你的需求，AI 将为你生成 Formily 2.x 的 schema
+          </p>
+        </motion.div>
+
+        {/* 特性介绍 */}
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <div className="glass rounded-xl p-6 text-center">
+            <Zap className="h-8 w-8 text-blue-400 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-slate-200 mb-2">智能识别</h3>
+            <p className="text-slate-400">AI 自动识别图片中的表单元素和布局</p>
+          </div>
+          <div className="glass rounded-xl p-6 text-center">
+            <Wand2 className="h-8 w-8 text-purple-400 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-slate-200 mb-2">一键生成</h3>
+            <p className="text-slate-400">快速生成符合 Formily 2.x 规范的 schema</p>
+          </div>
+          <div className="glass rounded-xl p-6 text-center">
+            <Sparkles className="h-8 w-8 text-green-400 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-slate-200 mb-2">历史记录</h3>
+            <p className="text-slate-400">保存生成历史，支持快速重试和查看</p>
+          </div>
+        </motion.div>
+
+        {/* 主要内容 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* 左侧：输入区域 */}
+          <motion.div 
+            className="space-y-6"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            {/* 图片上传区域 */}
+            <div className="glass rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center space-x-2">
+                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                <span>上传参考图片</span>
+              </h2>
+              <ImageUploader onImageChange={setUploadedImage} />
+            </div>
+
+            {/* Prompt 输入区域 */}
+            <div className="glass rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center space-x-2">
+                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                <span>描述你的需求</span>
+              </h2>
+              <PromptInput 
+                onPromptChange={setPrompt} 
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* 错误提示 */}
+            <AnimatePresence>
+              {error && (
+                <motion.div 
+                  className="flex items-center space-x-3 p-4 bg-red-500/20 border border-red-500/30 rounded-xl"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <AlertCircle className="text-red-400" size={20} />
+                  <span className="text-red-300">{error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 生成按钮 */}
+            <motion.div 
+              className="flex justify-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+            >
+              <motion.button
+                onClick={handleGenerateSchema}
+                disabled={!canSubmit}
+                className={`flex items-center space-x-3 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
+                  canSubmit
+                    ? 'btn-gradient text-white shadow-lg hover:shadow-xl'
+                    : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                }`}
+                whileHover={canSubmit ? { scale: 1.05 } : {}}
+                whileTap={canSubmit ? { scale: 0.95 } : {}}
+              >
+                {isLoading ? (
+                  <>
+                    <LoadingSpinner size={24} />
+                    <span>生成中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wand2 size={24} />
+                    <span>生成 Schema</span>
+                  </>
+                )}
+              </motion.button>
+            </motion.div>
+          </motion.div>
+
+          {/* 右侧：历史记录 */}
+          <motion.div 
+            className="h-[600px]"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <HistoryPanel 
+              onRetry={handleRetry}
+              onView={handleViewHistory}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </motion.div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* Schema 展示抽屉 */}
+      <SchemaDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        schema={generatedSchema}
+      />
     </div>
   );
 }
