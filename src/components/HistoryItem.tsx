@@ -5,6 +5,7 @@ import { Clock, Trash2, RefreshCw, Copy, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 import copy from 'copy-to-clipboard';
 import type { HistoryRecord } from '@/types';
+import Image from 'next/image';
 
 interface HistoryItemProps {
   record: HistoryRecord;
@@ -50,7 +51,7 @@ export function HistoryItem({ record, onRetry, onDelete, onView }: HistoryItemPr
       <div className="flex items-start space-x-3">
         {/* 图片缩略图 */}
         <div className="flex-shrink-0">
-          <img
+          <Image
             src={`data:image/png;base64,${record.image}`}
             alt="历史记录图片"
             className="w-16 h-16 rounded-lg object-cover border border-slate-600"

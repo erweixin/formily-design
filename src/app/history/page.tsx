@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Trash2, Eye, Calendar, Clock } from 'lucide-react';
 import { HistoryResponse } from '@/types';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import Image from 'next/image';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -168,7 +169,7 @@ export default function HistoryPage() {
               >
                 {/* 图片预览 */}
                 <div className="relative aspect-video bg-gray-100">
-                  <img
+                  <Image
                     src={item.inputImageUrl}
                     alt="表单设计"
                     className="w-full h-full object-cover"

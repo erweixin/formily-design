@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { X, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UploadedImage } from '@/types';
+import Image from 'next/image';
 
 interface ImageUploaderProps {
   onImageChange: (image: UploadedImage | null) => void;
@@ -99,7 +100,7 @@ export function ImageUploader({ onImageChange }: ImageUploaderProps) {
               exit={{ opacity: 0, scale: 0.8 }}
               className="relative"
             >
-              <img
+              <Image
                 src={uploadedImage.preview}
                 alt="上传的图片"
                 className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg"

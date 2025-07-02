@@ -4,10 +4,10 @@ import { getHistoryItem, deleteHistoryItem } from '@/lib/history';
 // GET /api/history/[id] - 获取单个历史记录
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     
     if (!id) {
       return NextResponse.json(
@@ -38,10 +38,10 @@ export async function GET(
 // DELETE /api/history/[id] - 删除历史记录
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     
     if (!id) {
       return NextResponse.json(

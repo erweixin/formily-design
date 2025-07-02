@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Copy, RefreshCw, Trash2 } from 'lucide-react';
 import { HistoryItem } from '@/types';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SchemaCodeTab } from '@/components/SchemaCodeTab';
 import { FormRenderer } from '@/components/FormRenderer';
+import Image from 'next/image';
 
 export default function HistoryDetailPage() {
   const router = useRouter();
@@ -18,13 +19,7 @@ export default function HistoryDetailPage() {
 
   const id = params.id as string;
 
-  useEffect(() => {
-    if (id) {
-      fetchHistoryItem();
-    }
-  }, [id]);
-
-  const fetchHistoryItem = async () => {
+  const fetchHistoryItem = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/history/${id}`);
@@ -37,7 +32,13 @@ export default function HistoryDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchHistoryItem();
+    }
+  }, [id, fetchHistoryItem]);
 
   const handleDelete = async () => {
     if (!confirm('确定要删除这条历史记录吗？')) return;
@@ -159,7 +160,7 @@ export default function HistoryDetailPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">原始图片</h3>
               <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                <img
+                <Image
                   src={historyItem.inputImageUrl}
                   alt="原始表单设计"
                   className="w-full h-full object-cover"

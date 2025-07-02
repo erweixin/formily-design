@@ -155,7 +155,7 @@ export async function getHistoryList(params: HistoryQueryParams = {}): Promise<H
         const matchesSuccess = success === undefined || item.metadata?.success === success;
         
         if (matchesSearch && matchesSuccess) {
-          filteredIds.push(id);
+          filteredIds.push(id as string);
         }
       }
     }
